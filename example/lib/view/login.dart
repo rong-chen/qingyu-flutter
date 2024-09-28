@@ -8,6 +8,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../main.dart';
@@ -21,7 +22,8 @@ class LoginPage extends StatefulWidget {
   LoginStatePage createState() => LoginStatePage();
 }
 
-class LoginStatePage extends State<LoginPage> {
+class LoginStatePage extends State<LoginPage>
+    with WindowListener, TrayListener {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
@@ -59,7 +61,8 @@ class LoginStatePage extends State<LoginPage> {
               return ChatItem.fromJson(el);
             }).toList();
             Provider.of<ChatMessageStore>(context, listen: false).set(cList);
-            bool b = await Provider.of<MSocket>(context, listen: false).connect(resp["data"]['ID']);
+            MSocket mSocket = MSocket();
+            bool b = await mSocket.connect(resp["data"]['ID']);
             if (b) {
               context.go("/home");
             } else {
@@ -76,6 +79,13 @@ class LoginStatePage extends State<LoginPage> {
     } catch (err) {
       Provider.of<LoadingEle>(context, listen: false).hidden();
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(this); // 添加窗口监听器
+    trayManager.addListener(this);
   }
 
   @override
@@ -129,64 +139,68 @@ class LoginStatePage extends State<LoginPage> {
                                 children: [
                                   Form(
                                       key: _formKey,
-                                      child: Column(
-                                        children: [
-                                          PasswordFormBox(
-                                            validator: (text) {
-                                              if (text == null) return null;
-                                              if (text.isEmpty) {
-                                                return '请输入帐号';
-                                              }
-                                              return null;
-                                            },
-                                            placeholder: "帐号",
-                                            revealMode:
-                                                PasswordRevealMode.visible,
-                                            autovalidateMode:
-                                                AutovalidateMode.onUnfocus,
-                                            controller: usernameController,
-                                          ),
-                                          Container(
-                                            margin:
-                                                const EdgeInsets.only(top: 20),
-                                            child: PasswordFormBox(
+                                      child: Center(
+                                        child: Column(
+                                          children: [
+                                            PasswordFormBox(
                                               validator: (text) {
                                                 if (text == null) return null;
                                                 if (text.isEmpty) {
-                                                  return '请输入密码';
+                                                  return '请输入帐号';
                                                 }
                                                 return null;
                                               },
-                                              placeholder: "密码",
+                                              placeholder: "帐号",
                                               revealMode:
-                                                  PasswordRevealMode.peekAlways,
+                                                  PasswordRevealMode.visible,
                                               autovalidateMode:
                                                   AutovalidateMode.onUnfocus,
-                                              controller: passwordController,
+                                              controller: usernameController,
                                             ),
-                                          ),
-                                          Container(
-                                            width: 300,
-                                            margin:
-                                                const EdgeInsets.only(top: 20),
-                                            child: FilledButton(
-                                                child: const Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  children: [
-                                                    Text("登录"),
-                                                    Padding(
-                                                      padding: EdgeInsets.only(
-                                                          left: 10),
-                                                      child: Icon(FluentIcons
-                                                          .double_chevron_right8),
-                                                    ),
-                                                  ],
-                                                ),
-                                                onPressed: () =>
-                                                    loginHandler()),
-                                          )
-                                        ],
+                                            Container(
+                                              margin: const EdgeInsets.only(
+                                                  top: 20),
+                                              child: PasswordFormBox(
+                                                validator: (text) {
+                                                  if (text == null) return null;
+                                                  if (text.isEmpty) {
+                                                    return '请输入密码';
+                                                  }
+                                                  return null;
+                                                },
+                                                placeholder: "密码",
+                                                revealMode: PasswordRevealMode
+                                                    .peekAlways,
+                                                autovalidateMode:
+                                                    AutovalidateMode.onUnfocus,
+                                                controller: passwordController,
+                                              ),
+                                            ),
+                                            Container(
+                                              width: 300,
+                                              margin: const EdgeInsets.only(
+                                                  top: 20),
+                                              child: FilledButton(
+                                                  child: const Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    children: [
+                                                      Text("登录"),
+                                                      Padding(
+                                                        padding:
+                                                            EdgeInsets.only(
+                                                                left: 10),
+                                                        child: Icon(FluentIcons
+                                                            .double_chevron_right8),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  onPressed: () =>
+                                                      loginHandler()),
+                                            )
+                                          ],
+                                        ),
                                       )),
                                 ],
                               ))
@@ -201,6 +215,66 @@ class LoginStatePage extends State<LoginPage> {
         ),
       ],
     );
+  }
+
+  @override
+  void onTrayIconMouseDown() {
+    windowManager.show();
+  }
+
+  @override
+  void onTrayIconRightMouseDown() {
+    trayManager.popUpContextMenu();
+    print("onTrayIconRightMouseDown");
+  }
+
+  @override
+  void onTrayMenuItemClick(MenuItem menuItem) {
+    if (menuItem.key == '退出') {
+      windowManager.hide();
+      windowManager.close();
+      windowManager.destroy();
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    trayManager.removeListener(this);
+    windowManager.removeListener(this);
+  }
+
+  @override
+  void onWindowClose() async {
+    bool isPreventClose = await windowManager.isPreventClose();
+    if (isPreventClose && mounted) {
+      showDialog(
+        context: context,
+        builder: (_) {
+          return ContentDialog(
+            title: const Text('操作'),
+            content: const Text('是否要最小化到托盘栏'),
+            actions: [
+              FilledButton(
+                child: const Text('确定'),
+                onPressed: () {
+                  Navigator.pop(context);
+                  windowManager.hide();
+                },
+              ),
+              Button(
+                child: const Text('退出'),
+                onPressed: () {
+                  Navigator.pop(context);
+                  windowManager.close();
+                  windowManager.destroy();
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 }
 

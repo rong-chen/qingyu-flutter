@@ -10,15 +10,18 @@ import 'ChatMessage.dart';
 
 class MSocket with ChangeNotifier {
   late WebSocket socket;
-  late String url;
-  final ChatMessageStore chatMessage;
-
-  MSocket(this.chatMessage);
+  late String _url;
+  final ChatMessageStore chatMessage = ChatMessageStore();
+  static final MSocket _mSocket = MSocket._internal();
+  MSocket._internal();
+  factory MSocket() {
+    return _mSocket;
+  }
 
   Future<bool> connect(String id) async {
-    url = "wss://${HttpService().value}/conn/ws/$id";
+    _url = "wss://${HttpService().value}/conn/ws/$id";
     try {
-      socket = await WebSocket.connect(url);
+      socket = await WebSocket.connect(_url);
       // 链接成功 事件处理方法
       _connectEvent();
       return true;
@@ -36,26 +39,27 @@ class MSocket with ChangeNotifier {
         try {
           Map<String, dynamic> map = jsonDecode(message);
           ChatItem ci = ChatItem.fromJson(map);
-          chatMessage.add(ci);
+          ChatMessageStore().add(ci);
         } catch (err) {
           print(err);
         }
       },
       onError: (error) async {
         print('连接错误重试连接中。。。。');
-        socket = await WebSocket.connect(url);
+        socket = await WebSocket.connect(_url);
         print('连接错误: $error');
       },
       onDone: () async {
         print('连接错误重试连接中。。。。');
-        socket = await WebSocket.connect(url);
+        socket = await WebSocket.connect(_url);
       },
       cancelOnError: true,
     );
   }
 
-  void send(ChatItem message) {
-    chatMessage.add(message);
-    socket.add(jsonEncode(message));
+  void send(Map<String, dynamic> message) {
+    ChatMessageStore().add(ChatItem.fromJson(message));
+    String content = jsonEncode(message);
+    socket.add(content);
   }
 }

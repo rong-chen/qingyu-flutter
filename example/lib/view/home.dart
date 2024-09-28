@@ -1,11 +1,10 @@
 import 'dart:convert';
 
-import 'package:example/models/home/classfity.dart';
+import 'package:example/models/classfity/classfity.dart';
 import 'package:example/store/loading.dart';
-import 'package:example/store/user.dart';
 import 'package:example/utils/request.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import '../../widgets/Chat.dart';
+import '../component/Chat.dart';
 import '../../widgets/page.dart';
 
 class HomePage extends StatefulWidget {

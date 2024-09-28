@@ -4,8 +4,10 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   flutter_acrylic
+  flutter_webrtc
   screen_retriever
   system_theme
+  tray_manager
   url_launcher_windows
   window_manager
 )

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:example/store/ChatMessage.dart';
@@ -12,6 +13,7 @@ import 'package:flutter_acrylic/flutter_acrylic.dart' as flutter_acrylic;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:system_theme/system_theme.dart';
+import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'routes/forms.dart' deferred as forms;
@@ -56,17 +58,35 @@ void main() async {
         TitleBarStyle.hidden,
         windowButtonVisibility: false,
       );
-
+      await windowManager.setSize(const Size(1000, 600));
+      await windowManager.setMinimumSize(const Size(1000, 600));
+      await windowManager.center();
       await windowManager.setPreventClose(true);
       await windowManager.setSkipTaskbar(false);
     });
+
+    trayManager.setIcon(
+      Platform.isWindows
+          ? '/assets/images/qingyu.png'
+          : '/assets/images/qingyu.png',
+    );
+
+    Menu menu = Menu(
+      items: [
+        MenuItem(
+          key: '退出',
+          label: '退出',
+        ),
+      ],
+    );
+    await trayManager.setContextMenu(menu);
   }
+
   runApp(MultiProvider(
     providers: [
       ChangeNotifierProvider(create: (context) => LoadingEle()),
       ChangeNotifierProvider(create: (context) => UserStore()),
       ChangeNotifierProvider(create: (context) => ChatMessageStore()),
-      ChangeNotifierProvider(create: (context) => MSocket(Provider.of<ChatMessageStore>(context, listen: false),)),
     ],
     child: const MyApp(),
   ));
@@ -166,7 +186,8 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> with WindowListener {
+class _MyHomePageState extends State<MyHomePage>
+    with WindowListener, TrayListener {
   bool value = false;
   final viewKey = GlobalKey(debugLabel: 'Navigation View Key');
   final searchKey = GlobalKey(debugLabel: 'Search Bar Key');
@@ -215,12 +236,33 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   @override
   void initState() {
     windowManager.addListener(this);
+    trayManager.addListener(this);
     super.initState();
+  }
+
+  @override
+  void onTrayIconMouseDown() {
+    windowManager.show();
+  }
+
+  @override
+  void onTrayMenuItemClick(MenuItem menuItem) {
+    if (menuItem.key == '退出') {
+      windowManager.hide();
+      windowManager.close();
+      windowManager.destroy();
+    }
+  }
+
+  @override
+  void onTrayIconRightMouseUp() {
+    trayManager.popUpContextMenu();
   }
 
   @override
   void dispose() {
     windowManager.removeListener(this);
+    trayManager.removeListener(this);
     searchController.dispose();
     searchFocusNode.dispose();
     super.dispose();
@@ -321,20 +363,22 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         context: context,
         builder: (_) {
           return ContentDialog(
-            title: const Text('Confirm close'),
-            content: const Text('Are you sure you want to close this window?'),
+            title: const Text('操作'),
+            content: const Text('是否要最小化到托盘栏'),
             actions: [
               FilledButton(
-                child: const Text('Yes'),
+                child: const Text('确定'),
                 onPressed: () {
                   Navigator.pop(context);
-                  windowManager.destroy();
+                  windowManager.hide();
                 },
               ),
               Button(
-                child: const Text('No'),
+                child: const Text('退出'),
                 onPressed: () {
                   Navigator.pop(context);
+                  windowManager.close();
+                  windowManager.destroy();
                 },
               ),
             ],
@@ -351,7 +395,6 @@ class WindowButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final FluentThemeData theme = FluentTheme.of(context);
-
     return SizedBox(
       width: 138,
       height: 50,

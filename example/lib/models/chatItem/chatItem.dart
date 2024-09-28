@@ -1,7 +1,7 @@
 class ChatItem {
-  final String id;
-  final String createdAt;
-  final String updatedAt;
+  final String? id;
+  final String? createdAt;
+  final String? updatedAt;
   final String? deletedAt;
   final String sender;
   final String receiver;
@@ -10,9 +10,9 @@ class ChatItem {
   final String? fileURL;
 
   ChatItem({
-    required this.id,
-    required this.createdAt,
-    required this.updatedAt,
+    this.id,
+    this.createdAt,
+    this.updatedAt,
     this.deletedAt,
     required this.sender,
     required this.receiver,
@@ -29,8 +29,19 @@ class ChatItem {
         deletedAt: val["DeletedAt"],
         sender: val["sender"],
         receiver: val["receiver"],
-        contentType: val["contentType"],
+        contentType: val["contentType"] ?? val["type"],
         message: val["message"],
         fileURL: val["fileURL"]);
+  }
+
+  static Map<String, dynamic> toJson(String sender, String receiver,
+      String contentType, String message, String fileURL) {
+    return {
+      'sender': sender,
+      'receiver': receiver,
+      'type': contentType,
+      'message': message,
+      'fileURL': fileURL,
+    };
   }
 }

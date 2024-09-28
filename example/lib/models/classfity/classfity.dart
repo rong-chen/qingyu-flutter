@@ -1,6 +1,3 @@
-import 'dart:ffi';
-
-import 'package:example/store/user.dart';
 
 class Classify {
   final int id;
